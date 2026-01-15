@@ -38,7 +38,7 @@ virt-install \
     --name "$VM_NAME" \
     --memory 2048 \
     --vcpus 2 \
-    --disk "size=20,backing_store=$BASE_IMG,format=qcow2,cache=unsafe,bus=virtio" \
+    --disk "path=/var/lib/libvirt/images/${VM_NAME}.qcow2,size=20,backing_store=$BASE_IMG,format=qcow2,cache=unsafe,bus=virtio,transient=yes" \
     --disk "path=$SEED_ISO,device=cdrom,bus=sata" \
     --import \
     --os-variant rocky9 \
@@ -47,6 +47,12 @@ virt-install \
     --network network=default \
     --transient \
     --rng /dev/urandom
+
+# Clean up dummy image file - its not needed as the vm uses the backing_store + transient image only
+echo "==> Removing static placeholder file" 
+echo "    We need sudo rights to remove the image file placehoder"
+echo "    Command: sudo rm -f /var/lib/libvirt/images/${VM_NAME}.qcow2"
+sudo rm -f /var/lib/libvirt/images/${VM_NAME}.qcow2
 
 # Wait for VM to appear in virsh
 echo "==> Waiting for VM to obtain an IP address..."
