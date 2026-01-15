@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> Updating system"
+sudo dnf -y update
+
+echo "==> Installing virtualization stack"
+sudo dnf install -y \
+  qemu-kvm \
+  libvirt \
+  libvirt-daemon-kvm \
+  libvirt-client \
+  virt-install \
+  virt-viewer
+
+echo "==> Enabling libvirtd"
+sudo systemctl enable --now libvirtd
+
+echo "==> Installing ISO creation tools"
+sudo dnf install -y genisoimage
+
+echo "==> Installing YAML + Jinja tooling"
+sudo dnf install -y python3-jinja2 python3-pip
+
+echo "==> Installing correct yq"
+sudo dnf install -y yq
+
+echo "==> Installing CLI utilities"
+sudo dnf install -y jq git curl wget
+
+echo "==> Adding current user to libvirt groups" 
+sudo usermod -aG libvirt,qemu "$USER"
+
+echo "==> Ensuring qemu can traverse project directory path"
+
+# Resolve the absolute paths to the directories qemu must reach
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_DIR="$PROJECT_ROOT/images/base"
+SEED_DIR="$PROJECT_ROOT/cloud-init/generated"
+
+fix_path_permissions() {
+    local TARGET="$1"
+    echo "Checking path: $TARGET"
+
+    CURRENT="/"
+    IFS='/' read -ra PARTS <<< "$TARGET"
+
+    for PART in "${PARTS[@]}"; do
+        [[ -z "$PART" ]] && continue
+        CURRENT="$CURRENT$PART"
+
+        if [[ ! -x "$CURRENT" ]]; then
+            echo "Adding execute permission to: $CURRENT"
+            sudo setfacl -m u:qemu:--x  "$CURRENT"
+        fi
+
+        CURRENT="$CURRENT/"
+    done
+}
+
+fix_path_permissions "$BASE_DIR"
+fix_path_permissions "$SEED_DIR"
+
+echo "==> Host setup complete"
+echo "Log out and back in so libvirt permissions apply."
+

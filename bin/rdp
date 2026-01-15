@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profile="${1:-}"
+
+if [[ -z "$profile" ]]; then
+    echo "Usage: rdp <profile>"
+    exit 1
+fi
+
+VM_NAME="desktop-${profile}"
+
+echo "==> Looking up IP for VM: $VM_NAME"
+
+# Try to get IP via qemu-guest-agent first
+VM_IP=$(virsh --connect qemu:///system domifaddr "$VM_NAME" --source agent \
+    | awk '/ipv4/ && $4 !~ /^127\./ {print $4}' \
+    | cut -d/ -f1 \
+    | head -n1)
+
+
+# Fallback: generic domifaddr
+if [[ -z "${VM_IP}" ]]; then
+    VM_IP=$(virsh --connect qemu:///system domifaddr "$VM_NAME" 2>/dev/null | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+fi
+
+if [[ -z "${VM_IP}" ]]; then
+    echo "Error: Could not determine IP address for $VM_NAME"
+    echo "Try: virsh domifaddr $VM_NAME"
+    exit 1
+fi
+
+echo "==> Connecting to RDP at ${VM_IP}:3389"
+echo "==> Username: user"
+
+xfreerdp /v:"${VM_IP}:3389" /u:user /cert:ignore
+

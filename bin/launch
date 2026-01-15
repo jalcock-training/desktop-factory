@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_DIR="$REPO_ROOT/images/base"
+GENERATED_DIR="$REPO_ROOT/cloud-init/generated"
+
+profile="${1:-}"
+
+if [[ -z "$profile" ]]; then
+    echo "Usage: launch <profile>"
+    exit 1
+fi
+
+BASE_IMG="$BASE_DIR/rocky9-base.qcow2"
+SEED_ISO="$GENERATED_DIR/${profile}-seed.iso"
+
+if [[ ! -f "$BASE_IMG" ]]; then
+    echo "Error: base image not found: $BASE_IMG"
+    echo "Run: bin/fetch-base"
+    exit 1
+fi
+
+if [[ ! -f "$SEED_ISO" ]]; then
+    echo "Error: seed ISO not found: $SEED_ISO"
+    echo "Run: bin/make-seed $profile"
+    exit 1
+fi
+
+VM_NAME="desktop-${profile}"
+
+echo "==> Launching transient VM: $VM_NAME"
+echo "     Base image: $BASE_IMG"
+echo "     Seed ISO:   $SEED_ISO"
+
+virt-install \
+    --connect qemu:///system \
+    --name "$VM_NAME" \
+    --memory 2048 \
+    --vcpus 2 \
+    --disk "size=20,backing_store=$BASE_IMG,format=qcow2,cache=unsafe,bus=virtio" \
+    --disk "path=$SEED_ISO,device=cdrom,bus=sata" \
+    --import \
+    --os-variant rocky9 \
+    --graphics vnc,listen=127.0.0.1 \
+    --noautoconsole \
+    --network network=default \
+    --transient \
+    --rng /dev/urandom
+
+# Wait for VM to appear in virsh
+echo "==> Waiting for VM to obtain an IP address..."
+sleep 3
+
+# Try to get the IP address
+VM_IP=$(virsh --connect qemu:///system domifaddr "$VM_NAME" --source agent 2>/dev/null | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+
+# Fallback: try ARP-based lookup if qemu-guest-agent isn't ready yet
+if [[ -z "$VM_IP" ]]; then
+    VM_IP=$(virsh --connect qemu:///system domifaddr "$VM_NAME" 2>/dev/null | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+fi
+
+if [[ -n "$VM_IP" ]]; then
+    echo "==> RDP ready at: ${VM_IP}:3389"
+else
+    echo "==> VM launched, but IP not yet available."
+    echo "    You can check later with:"
+    echo "      virsh domifaddr $VM_NAME"
+fi
+
+echo "VM exited. All changes discarded."
+

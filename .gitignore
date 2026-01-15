@@ -1,0 +1,6 @@
+images/
+cloud-init/generated/
+*.qcow2
+*.iso
+*.img
+*.log

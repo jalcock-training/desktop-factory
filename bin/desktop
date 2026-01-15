@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BIN_DIR="$REPO_ROOT/bin"
+PROFILES_DIR="$REPO_ROOT/profiles"
+
+usage() {
+    cat <<EOF
+desktop - disposable desktop VM factory
+
+Usage:
+  desktop spawn <profile>
+  desktop list
+  desktop help
+
+Commands:
+  spawn <profile>   Launch a transient, snapshot-backed VM using the given profile
+  list              Show available profiles
+  help              Show this help message
+EOF
+}
+
+cmd_list() {
+    echo "Available profiles:"
+    for f in "$PROFILES_DIR"/*.yaml; do
+        basename "$f" .yaml
+    done
+}
+
+cmd_spawn() {
+    local profile="$1"
+
+    # Validate profile
+    if [[ ! -f "$PROFILES_DIR/$profile.yaml" ]]; then
+        echo "Error: profile '$profile' not found in $PROFILES_DIR"
+        exit 1
+    fi
+
+    echo "==> Using profile: $profile"
+
+    # Ensure base image exists
+    echo "==> Checking base image"
+    "$BIN_DIR/fetch-base"
+
+    # Generate cloud-init seed
+    echo "==> Generating cloud-init seed"
+    "$BIN_DIR/make-seed" "$profile"
+
+    # Launch VM
+    echo "==> Launching VM"
+    "$BIN_DIR/launch" "$profile"
+}
+
+main() {
+    local cmd="${1:-}"
+
+    case "$cmd" in
+        spawn)
+            [[ $# -lt 2 ]] && { echo "Error: missing profile"; usage; exit 1; }
+            cmd_spawn "$2"
+            ;;
+        list)
+            cmd_list
+            ;;
+        help|"")
+            usage
+            ;;
+        *)
+            echo "Unknown command: $cmd"
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+

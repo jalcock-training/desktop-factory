@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROFILES_DIR="$REPO_ROOT/profiles"
+TEMPLATE_DIR="$REPO_ROOT/cloud-init/templates"
+GENERATED_DIR="$REPO_ROOT/cloud-init/generated"
+
+mkdir -p "$GENERATED_DIR"
+
+profile="${1:-}"
+pubkey_file="${2:-}"
+
+if [[ -z "$profile" ]]; then
+    echo "Usage: make-seed <profile> <pubkey-file>"
+    exit 1
+fi
+
+if [[ -z "$pubkey_file" ]]; then
+    echo "Error: missing pubkey file"
+    echo "Usage: make-seed <profile> <pubkey-file>"
+    exit 1
+fi
+
+if [[ ! -f "$pubkey_file" ]]; then
+    echo "Error: pubkey file not found: $pubkey_file"
+    exit 1
+fi
+
+SSH_KEY_CONTENT=$(cat "$pubkey_file")
+
+PROFILE_FILE="$PROFILES_DIR/$profile.yaml"
+COMMON_FILE="$PROFILES_DIR/common.yaml"
+
+if [[ ! -f "$PROFILE_FILE" ]]; then
+    echo "Error: profile '$profile' not found in $PROFILES_DIR"
+    exit 1
+fi
+
+USER_DATA_TEMPLATE="$TEMPLATE_DIR/user-data.j2"
+META_DATA_TEMPLATE="$TEMPLATE_DIR/meta-data.j2"
+NETWORK_CONFIG_TEMPLATE="$TEMPLATE_DIR/network-config.j2"
+
+MERGED_YAML="$GENERATED_DIR/$profile-merged.yaml"
+USER_DATA="$GENERATED_DIR/user-data"
+META_DATA="$GENERATED_DIR/meta-data"
+NETWORK_CONFIG="$GENERATED_DIR/network-config"
+SEED_ISO="$GENERATED_DIR/${profile}-seed.iso"
+
+rm -f "$SEED_ISO"
+
+echo "==> Merging cloud-init YAML"
+yq eval-all '
+  select(fileIndex == 0) * select(fileIndex == 1) *
+  {
+    "profile": "'"$profile"'",
+    "hostname": "desktop-'"$profile"'",
+    "ssh_key": "'"$SSH_KEY_CONTENT"'"
+  }
+' "$COMMON_FILE" "$PROFILE_FILE" > "$MERGED_YAML"
+
+echo "==> Rendering user-data"
+jinja2 "$USER_DATA_TEMPLATE" "$MERGED_YAML" > "$USER_DATA"
+
+echo "==> Rendering meta-data"
+jinja2 "$META_DATA_TEMPLATE" "$MERGED_YAML" > "$META_DATA"
+
+echo "==> Rendering network-config"
+jinja2 "$NETWORK_CONFIG_TEMPLATE" "$MERGED_YAML" > "$NETWORK_CONFIG"
+
+echo "==> Creating seed ISO: $SEED_ISO"
+genisoimage -quiet \
+    -output "$SEED_ISO" \
+    -volid cidata \
+    -joliet -rock \
+    "$USER_DATA" "$META_DATA" "$NETWORK_CONFIG"
+
+echo "Seed ISO ready: $SEED_ISO"
+

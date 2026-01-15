@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_DIR="$REPO_ROOT/images/base"
+mkdir -p "$BASE_DIR"
+
+BASE_URL="https://download.rockylinux.org/pub/rocky/9/images/x86_64"
+CHECKSUM_URL="$BASE_URL/CHECKSUM"
+
+CHECKSUM_FILE="$BASE_DIR/CHECKSUM"
+FINAL_IMG="$BASE_DIR/rocky9-base.qcow2"
+
+echo "==> Downloading CHECKSUM file"
+curl -fsSL "$CHECKSUM_URL" -o "$CHECKSUM_FILE"
+
+echo "==> Extracting actual qcow2 filename"
+QCOW_FILENAME=$(grep -Eo 'Rocky-9-GenericCloud[^ )]+\.qcow2' "$CHECKSUM_FILE" | head -n1)
+
+if [[ -z "$QCOW_FILENAME" ]]; then
+    echo "ERROR: Could not extract qcow2 filename from CHECKSUM"
+    exit 1
+fi
+
+echo "==> Extracted filename: $QCOW_FILENAME"
+
+IMG_URL="$BASE_URL/$QCOW_FILENAME"
+DOWNLOADED_IMG="$BASE_DIR/$QCOW_FILENAME"
+
+if [[ ! -f "$DOWNLOADED_IMG" ]]; then
+    echo "==> Downloading image: $QCOW_FILENAME"
+    curl -fsSL "$IMG_URL" -o "$DOWNLOADED_IMG"
+else
+    echo "==> Image already exists: $DOWNLOADED_IMG"
+fi
+
+echo "==> Extracting expected SHA256 hash"
+EXPECTED_HASH=$(grep -E "SHA256 \($QCOW_FILENAME\)" "$CHECKSUM_FILE" | awk '{print $4}')
+
+if [[ -z "$EXPECTED_HASH" ]]; then
+    echo "ERROR: Could not extract SHA256 hash for $QCOW_FILENAME"
+    exit 1
+fi
+
+echo "==> Verifying checksum"
+if echo "$EXPECTED_HASH  $DOWNLOADED_IMG" | sha256sum -c -; then
+    echo "==> Checksum OK"
+else
+    echo "ERROR: Checksum failed, deleting corrupted image"
+    rm -f "$DOWNLOADED_IMG"
+    exit 1
+fi
+
+echo "==> Normalizing filename to rocky9-base.qcow2"
+cp "$DOWNLOADED_IMG" "$FINAL_IMG"
+
+echo "==> Base image ready: $FINAL_IMG"
+

@@ -1,0 +1,5 @@
+runcmd:
+  - flatpak install -y flathub org.telegram.desktop
+  - flatpak install -y flathub org.signal.Signal
+  - flatpak install -y flathub com.slack.Slack
+

@@ -1,0 +1,21 @@
+#cloud-config
+
+users:
+{% for u in users %}
+  - name: {{ u.name }}
+    groups: {{ u.groups | default("wheel") }}
+    sudo: {{ u.sudo | default("ALL=(ALL) NOPASSWD:ALL") }}
+    shell: {{ u.shell | default("/bin/bash") }}
+    lock_passwd: false
+    passwd: "{{ u.passwd }}"
+{% endfor %}
+
+packages:
+{% for p in packages %}
+  - {{ p }}
+{% endfor %}
+
+runcmd:
+{% for cmd in runcmd %}
+  - {{ cmd }}
+{% endfor %}

@@ -1,0 +1,17 @@
+users:
+  - name: user
+    groups: wheel
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+
+packages:
+  - xrdp
+  - xorgxrdp
+  - flatpak
+  - epel-release
+
+runcmd:
+  - dnf groupinstall -y xfce-desktop
+  - systemctl enable --now xrdp
+  - flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
