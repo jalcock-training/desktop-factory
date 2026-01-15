@@ -190,3 +190,8 @@ bin/desktop spawn <name>
 - macOS/Windows user-setup scripts
 - Profile-specific post-launch hooks
 
+---
+
+## License
+
+See LICENSE file
