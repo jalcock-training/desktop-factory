@@ -3,15 +3,20 @@ users:
     groups: wheel
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
+    plain_text_passwd: "changeme"
+    lock_passwd: false
 
 packages:
-  - xrdp
-  - xorgxrdp
   - flatpak
   - epel-release
 
 runcmd:
+  - dnf install -y xrdp xorgxrdp
   - dnf groupinstall -y xfce-desktop
+  - dnf -y install xrdp-pulseaudio-installer
+  - xrdp-pulseaudio-installer
   - systemctl enable --now xrdp
   - flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
+  - echo "startxfce4" > /home/user/.Xclients
+  - chmod +x /home/user/.Xclients
+  - chown user:user /home/user/.Xclients

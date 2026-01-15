@@ -51,12 +51,15 @@ rm -f "$SEED_ISO"
 
 echo "==> Merging cloud-init YAML"
 yq eval-all '
-  select(fileIndex == 0) * select(fileIndex == 1) *
-  {
-    "profile": "'"$profile"'",
-    "hostname": "desktop-'"$profile"'",
-    "ssh_key": "'"$SSH_KEY_CONTENT"'"
-  }
+  . as $doc ireduce ({}; 
+    .users    = (.users    + ($doc.users    // [])) |
+    .packages = (.packages + ($doc.packages // [])) |
+    .runcmd   = (.runcmd   + ($doc.runcmd   // [])) |
+    . * ($doc | del(.users, .packages, .runcmd))
+  )
+  | .profile  = "'"$profile"'"
+  | .hostname = "desktop-'"$profile"'"
+  | .ssh_key  = "'"$SSH_KEY_CONTENT"'"
 ' "$COMMON_FILE" "$PROFILE_FILE" > "$MERGED_YAML"
 
 echo "==> Rendering user-data"
