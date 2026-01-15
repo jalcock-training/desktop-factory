@@ -33,5 +33,5 @@ fi
 echo "==> Connecting to RDP at ${VM_IP}:3389"
 echo "==> Username: user"
 
-xfreerdp /v:"${VM_IP}:3389" /u:user /cert:ignore
+xfreerdp /v:"${VM_IP}:3389" /u:user /cert:ignore /sound /clipboard &
 

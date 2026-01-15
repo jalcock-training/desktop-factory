@@ -11,6 +11,12 @@ This project creates ephemeral Rocky Linux desktops on demand. Each desktop is:
 
 ---
 
+## Quickstart Guide
+
+See QUICKSTART.md
+
+---
+
 ## Features
 
 - Launch a fresh Rocky Linux desktop in seconds

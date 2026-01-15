@@ -3,19 +3,22 @@
 users:
 {% for u in users %}
   - name: {{ u.name }}
-    groups: {{ u.groups | default("wheel") }}
-    sudo: {{ u.sudo | default("ALL=(ALL) NOPASSWD:ALL") }}
-    shell: {{ u.shell | default("/bin/bash") }}
-    lock_passwd: false
-    passwd: "{{ u.passwd }}"
+    groups: {{ u.groups }}
+    sudo: {{ u.sudo }}
+    shell: {{ u.shell }}
+    lock_passwd: {{ u.lock_passwd }}
+    plain_text_passwd: "{{ u.plain_text_passwd }}"
+    ssh_authorized_keys:
+      - "{{ ssh_key }}"
 {% endfor %}
 
 packages:
-{% for p in packages %}
-  - {{ p }}
+{% for pkg in packages %}
+  - {{ pkg }}
 {% endfor %}
 
 runcmd:
 {% for cmd in runcmd %}
   - {{ cmd }}
 {% endfor %}
+
