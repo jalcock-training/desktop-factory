@@ -5,7 +5,8 @@
 ./bin/fetch-base
 
 # 3. Generate cloud-init seed for browser profile
-./bin/make-seed browser ~/.ssh/desktop_id_rsa.pub 
+./bin/make-seed browser <ssh_pubkey_path> <rdp_password>
+./bin/make-seed browser ~/.ssh/desktop_id_rsa.pub changeme
 
 # 4. Launch the disposable desktop
 ./bin/launch browser
