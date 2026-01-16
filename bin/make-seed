@@ -10,15 +10,10 @@ mkdir -p "$GENERATED_DIR"
 
 profile="${1:-}"
 pubkey_file="${2:-}"
+password="${3:-}"
 
-if [[ -z "$profile" ]]; then
-    echo "Usage: make-seed <profile> <pubkey-file>"
-    exit 1
-fi
-
-if [[ -z "$pubkey_file" ]]; then
-    echo "Error: missing pubkey file"
-    echo "Usage: make-seed <profile> <pubkey-file>"
+if [[ -z "$profile" || -z "$pubkey_file" || -z "$password" ]]; then
+    echo "Usage: make-seed <profile> <pubkey-file> <password>"
     exit 1
 fi
 
@@ -60,6 +55,12 @@ yq eval-all '
   | .profile  = "'"$profile"'"
   | .hostname = "desktop-'"$profile"'"
   | .ssh_key  = "'"$SSH_KEY_CONTENT"'"
+  | .users |= (
+      map(
+        select(.name == "user") * {"plain_text_passwd": "'"$password"'"} 
+        // select(.name != "user")
+      )
+    )
 ' "$COMMON_FILE" "$PROFILE_FILE" > "$MERGED_YAML"
 
 echo "==> Rendering user-data"

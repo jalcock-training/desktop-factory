@@ -3,7 +3,6 @@ users:
     groups: wheel
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
-    plain_text_passwd: "changeme"
     lock_passwd: false
 
 packages:
