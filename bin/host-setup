@@ -11,6 +11,7 @@ sudo dnf install -y \
   libvirt-daemon-kvm \
   libvirt-client \
   virt-install \
+  virt-manager \
   virt-viewer
 
 echo "==> Enabling libvirtd"
